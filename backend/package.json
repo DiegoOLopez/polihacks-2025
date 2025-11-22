@@ -1,0 +1,11 @@
+{
+  "name": "polihacks-backend",
+  "version": "1.0.0",
+  "description": "Detector de fraude bancario",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run dev"
+  },
+  "author": "",
+  "license": "ISC"
+}
