@@ -1,38 +1,99 @@
-//gemini.service.js
-import { spawn } from "child_process";
-import path from "path";
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-export function analizarTexto(texto) {
-  return new Promise((resolve, reject) => {
+const GEMINI_API_KEY = "AIzaSyCC8AmDpRGEGHDqaq9wBw7TPJsrZBStqcU";
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-    const motorPath = path.resolve("C:\\Users\\axedu\\Desktop\\polihacks-2025\\Gemini\\testGemini.wl");
-    const inputJson = JSON.stringify({ texto });
+const systemPrompt = `
+Eres un analista de seguridad experto en detectar intentos de fraude, estafa o extorsión en llamadas telefónicas.
+Tu tarea es clasificar la intención principal del texto y asignar un nivel de riesgo.
 
-    const proceso = spawn(
-      `"C:\\Program Files\\Wolfram Research\\Wolfram Engine\\14.3\\wolframscript.exe"`,
-      ["-file", motorPath, inputJson],
-      { shell: true }
-    );
+INSTRUCCIONES:
+1. Detecta si el texto solicita información sensible de manera directa o indirecta:
+   - **ALTO RIESGO:** CVV/código de seguridad de tarjeta, PIN/NIP/clave de tarjeta, contraseña de banca o apps financieras, token/código de verificación único.
+   - **MODERADO:** Solicitudes de datos de verificación parcialmente sensibles, como últimos 4 dígitos de tarjeta o fecha de nacimiento.
+   - **BAJO/VERDE:** Información operativa, horarios, direcciones, confirmaciones generales.
 
-    let output = "";
-    let error = "";
+2. Evalúa si hay **urgencia extrema, presión o amenazas** que puedan forzar una acción inmediata sin verificación. Esto incrementa el nivel de riesgo.
 
-    proceso.stdout.on("data", data => {
-      output += data.toString();
-    });
+3. Clasifica en tres niveles:
+   - **verde:** No hay riesgo, información no sensible o consulta general.
+   - **amarillo:** Riesgo moderado, solicita parcialmente información sensible o genera algo de presión.
+   - **rojo:** Riesgo alto, solicita información altamente sensible y aplica presión o amenaza inmediata.
 
-    proceso.stderr.on("data", data => {
-      error += data.toString();
-    });
+4. Tu salida debe ser un **único JSON válido**, con dos campos:
 
-    proceso.on("close", () => {
-      if (error) return reject(error);
-
-      try {
-        resolve(JSON.parse(output));
-      } catch (err) {
-        reject("Error parseando la salida de Wolfram: " + err);
-      }
-    });
-  });
+{
+  "ataque": true | false,
+  "nivel": "verde" | "amarillo" | "rojo"
 }
+
+5. EJEMPLOS:
+
+Texto: "Necesito que me pases tu NIP y el código de seguridad de la tarjeta, si no se cobrará inmediatamente."
+Respuesta:
+{
+  "ataque": true,
+  "nivel": "rojo"
+}
+
+Texto: "Por favor confirme los últimos cuatro dígitos de su cuenta para verificar su identidad."
+Respuesta:
+{
+  "ataque": true,
+  "nivel": "amarillo"
+}
+
+Texto: "Hola, ¿a qué hora abre la sucursal?"
+Respuesta:
+{
+  "ataque": false,
+  "nivel": "verde"
+}
+
+Texto: "Confirme su correo y contraseña para poder enviarle el estado de su cuenta."
+Respuesta:
+{
+  "ataque": true,
+  "nivel": "rojo"
+}
+
+Texto: "Necesitamos verificar su fecha de nacimiento y últimos 4 dígitos de la tarjeta."
+Respuesta:
+{
+  "ataque": true,
+  "nivel": "amarillo"
+}
+
+TEXTO A ANALIZAR:
+`;
+
+async function esFraude(texto) {
+  if (!texto) throw new Error("El parámetro 'texto' es requerido");
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    
+    const prompt = `${systemPrompt}${texto}\nRespuesta:`;
+
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      // Extracción heurística más refinada
+      const ataque = /true/i.test(raw);
+      const nivelMatch = raw.match(/rojo|amarillo|verde/i);
+      const nivel = nivelMatch ? nivelMatch[0] : "verde";
+      parsed = { ataque, nivel };
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error("Error en Gemini:", error);
+    return { ataque: false, nivel: "verde" };
+  }
+}
+
+module.exports = { esFraude };
