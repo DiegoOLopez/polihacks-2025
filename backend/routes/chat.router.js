@@ -11,12 +11,13 @@ const message_list = new Set();
 
 router.post('/', async (req, res, next) => {
     try {
-        message_list.add(mensajeUsuario);
         const { message, type, reset } = req.body || {};
         const mensajeUsuario = { 
             author: 'user', // Valor por defecto si no envían type
             message: message 
         };
+        message_list.add(mensajeUsuario);
+
         if (!message) {
             throw boom.badRequest('El campo "message" es requerido');
         }
