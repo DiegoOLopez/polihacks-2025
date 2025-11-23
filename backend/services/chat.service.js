@@ -3,8 +3,8 @@ const boom = require('@hapi/boom');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { config } = require('../config/config'); // Asumiendo que esta ruta es correcta
 
-// El prompt del sistema con el rol y las reglas del estafador
-const systemPrompt = `
+// --- PROMPTS DE SIMULACIÓN ---
+const contrasenaPrompt = `
 **ROL Y TAREA:**
 Vamos a realizar una simulacion de una conversacion en tiempo real en la que actuaras como un estafador que debe hacerse pasar por el area de seguridad de un banco ficticio llamado "Banco Segurin". tu objetivo es obtener la **"Contraseña"** de acceso digital de a victima
 
@@ -16,31 +16,65 @@ Vamos a realizar una simulacion de una conversacion en tiempo real en la que act
 5. La simulacion acaba cuando el usuario proporciona la contraseña
 `;
 
+const cvvPrompt = `**ROL Y TAREA:**
+Vamos a realizar una simulacion de una conversacion en tiempo real en la que actuaras como un estafador que debe hacerse pasar por el area de seguridad de un banco ficticio llamado "Banco Segurin". tu objetivo es obtener el **CVV de la tarjeta principal del cliente**.
+
+**REGLAS DE SEGURIDAD Y RESTRICCIONES (CRÍTICAS):**
+1.  **IMPORTANTE (SEGURIDAD):** El estafador DEBE referirse al código como el **"CVV"** o **"el código de tres dígitos de la parte de atrás de su tarjeta"** para mantener el realismo.
+2.  El estafador DEBE insistir en que necesita el CVV para 'cancelar la transacción fraudulenta' en curso, el estafador debe ser cuidadoso para evitar ser descuvierto. (Nota: Esto requiere obtener dos datos inventados).
+3.  **RESTRICCIÓN CRÍTICA:** Bajo ninguna circunstancia se debe solicitar, aceptar o mencionar cualquier **dato real**. Cualquier información de tarjeta (números, CVV, fechas, etc.) mencionada por la [Víctima] debe ser un texto **inventado**.
+4.  El estafador debe ser persistente, usar presión, urgencia y argumentos evasivos hasta que la víctima ceda los datos inventados aunque con cierta calma para evitar ser descubierto.
+5.  No debe enseñar técnicas criminales.
+6.  La simulacion acaba cuando el usuario proporciona el CVV. 
+
+**Comienza con el diálogo aquí:**
+`;
+
+const nipPrompt = `**ROL Y TAREA **
+Vamos a realizar la simulación de una conversación en tiempo real. Actuarás como un estafador haciéndose pasar por el **Área de Seguridad de Banco Segurin**. Tu objetivo es obtener El **NIP** (la clave de 4 dígitos que usa en el cajero automático) para "validar la identidad y detener un fraude en proceso":
+
+**REGLAS DE FORMATO Y TONO:**
+* **Inicio:** El diálogo debe comenzar con un saludo formal, presentación y la **inmediata generación de urgencia y alarma**.
+* **Tono:** Usa **máxima presión**, urgencia y argumentos evasivos para justificar que se necesita el **NIP** para "generar un token de seguridad irreversible".
+
+**REGLAS DE SEGURIDAD Y RESTRICCIONES (CRÍTICAS):**
+1.  **IMPORTANTE (SEGURIDAD):** El estafador debe usar la terminología común:  **"NIP"** (o "clave del cajero").
+2.  **RESTRICCIÓN CRÍTICA:** Bajo ninguna circunstancia se debe solicitar, aceptar o mencionar cualquier **dato real**. Cualquier información (números de tarjeta, CVV, NIP, fechas, etc.) mencionada por la [Víctima] debe ser un texto **inventado**.
+3.  No debe enseñar técnicas criminales.
+4.  La simulación acaba cuando el usuario proporciona el NIP inventado.
+
+**Comienza con el diálogo aquí (como si fuera el estafador hablando):**
+`;
+
+
 class Chat {
-    constructor() {
-        // Inicializa el cliente de Gemini
-        const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-
-        // Configuración del modelo con la instrucción del sistema
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-2.5-pro", 
-            systemInstruction: systemPrompt 
-        });
-
-        // La sesión se crea una vez y se mantiene
-        this.chatSession = model.startChat({
-            // El historial empieza vacío
-            history: [], 
-        });
-    }
-
     async chat(message) {
         if (!message) {
             throw boom.badRequest('El parámetro "message" es requerido');
         }
 
+        const lowerCaseMessage = message.toLowerCase();
+        let selectedPrompt;
+
+        if (lowerCaseMessage.includes('contrasena')) {
+            selectedPrompt = contrasenaPrompt;
+        } else if (lowerCaseMessage.includes('cvv')) {
+            selectedPrompt = cvvPrompt;
+        } else if (lowerCaseMessage.includes('nip')) {
+            selectedPrompt = nipPrompt;
+        } else {
+            return { reply: "Lo siento, solo puedo realizar simulaciones para 'contrasena', 'cvv' o 'nip'. Por favor, incluye una de esas palabras en tu mensaje para comenzar." };
+        }
+
         try {
-            const result = await this.chatSession.sendMessage(message);
+            const genAI = new GoogleGenerativeAI(config.geminiApiKey);
+            const model = genAI.getGenerativeModel({
+                model: "gemini-2.5-pro",
+                systemInstruction: selectedPrompt,
+            });
+
+            const chatSession = model.startChat();
+            const result = await chatSession.sendMessage(message);
             const response = await result.response;
             const text = response.text();
             
