@@ -1,26 +1,22 @@
-const express = require ('express');
+const express = require('express');
+const boom = require('@hapi/boom');
 
-const Chat = require('./../services/chat.service')
+const Chat = require('../services/chat.service');
 const router = express.Router();
-
 
 const service = new Chat();
 
-// Buscar modulos
-
-
-
-// Crear listas
-router.post ('/',
-async (req, res, next) => {
+router.post('/', async (req, res, next) => {
     try {
-        const body = req.body;
-        const respuesta = await service.chat(body);
+        const { message } = req.body || {};
+        if (!message) {
+            throw boom.badRequest('El campo "message" es requerido');
+        }
+        const respuesta = await service.chat(message);
         res.status(201).json(respuesta);
     } catch (error) {
-        next (error);
+        next(error);
     }
-}
-);
+});
 
 module.exports = router;

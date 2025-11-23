@@ -8,6 +8,7 @@ const config = {
   db_name: process.env.DB_NAME,
   db_port: process.env.DB_PORT,
   jwtSecret: process.env.JWTSECRET,
+  geminiApiKey: process.env.GEMINI_API_KEY,
 }
 
 
