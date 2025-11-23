@@ -65,9 +65,9 @@ router.post('/', async (req, res, next) => {
         // Llamamos al chat solo si Gemini detecta ataque
 
 
-
+        console.log(respuestaChat.reply, nivel, ataque)
         res.status(201).json({
-            respuesta: respuestaChat,
+            reply: respuestaChat.reply,
             nivel: nivel,
             ataque: ataque,
         });
