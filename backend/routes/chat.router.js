@@ -21,7 +21,7 @@ router.post('/', async (req, res, next) => {
         if (!message) {
             throw boom.badRequest('El campo "message" es requerido');
         }
-        const respuesta = await service.chat(message, type, reset);
+        const respuesta = await service.chat(message, type, reset, message_list);
 
         const mensajeModelo = {
             author: 'model',
