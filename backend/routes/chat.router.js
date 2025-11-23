@@ -42,10 +42,10 @@ router.post('/', async (req, res, next) => {
             };
 
             const mensajeModelo = {
-                author: 'model',
-                message: respuesta
+                role: 'model',
+                "parts": [{ "text": message }]
             };
-            message_list.add(mensajeModelo);
+            message_list.push(mensajeModelo);
 
             return res.status(201).json(respuesta);
         }
