@@ -2,16 +2,16 @@
 const express = require('express');
 const router = express.Router();
 // asume que la ruta es correcta segun la estructura de nuestro proyecto:
-const AlgoritmoService = require('../services/algoritmo.service');
 //instancia tu servicio para poder usar sus metodos
 const AlgoritmoService = require('../services/algoritmo.service');
+const service = new AlgoritmoService();
 const { route } = require('./example.router');
 /**
  * @route POST /check-call
  * @description Recibe la transcripcion de una llamada y devuelve el analisis de estafa
  */
-router.post('çheck-call',
-    async (req,resizeBy,next) => {
+router.post('/',
+    async (req,res,next) => {
         try{
             //asumimos que el cuerpo de ll¿a llamada lllega en el cuerpo(body)
             // con una propiedad llamda text
@@ -24,7 +24,9 @@ router.post('çheck-call',
             }
         //llama a tu servicio para ejecutar la logica de deteccion
         // Tu servicio devolverá { isScam: true/false, keywords: [...] }
-        const detectionResult = AlgoritmoService.checkCallForScam(incomingText);
+        const detectionResult = await service.checkCallForScam(incomingText);
+        console.log(detectionResult)
+
         //envia la respuesta con el resultado de la deteccion a mi compañero
         //un estado 200 (OK) indica que la operacion de deteccion fue exitosa
         return res.status(200).json(detectionResult); 

@@ -4,7 +4,7 @@ const express = require('express');
 const exampleRouter = require('./example.router');
 const classifyRoute = require('./classifyRoute');  
 const chatRouter = require('./chat.router')
-
+const detectionrouter = require('./detection.router')
 function routerAPI(app){
   const router = express.Router();
 
@@ -13,6 +13,7 @@ function routerAPI(app){
   router.use('/example', exampleRouter);
   router.use('/clasificar', classifyRoute);
   router.use('/chat', chatRouter)
+  router.use('/detection', detectionrouter)
 }
 
 module.exports = routerAPI;
