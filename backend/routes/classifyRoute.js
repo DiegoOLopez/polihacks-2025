@@ -6,7 +6,7 @@ const router = express.Router();
 router.post("/", async (req, res) => {
   try {
     const { texto } = req.body;
-    if (!texto) return res.status(400).json({ error: "Falta 'texto' en el body" });
+    if (!texto) return res.status(400).json({ error: "Falta 'texto'" });
 
     const resultado = await esFraude(texto);
     res.json({ ataque: resultado.ataque, nivel: resultado.nivel }); //devuelve si es true o false y el nivel de riesgo
