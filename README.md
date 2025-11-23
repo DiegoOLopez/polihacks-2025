@@ -10,13 +10,12 @@ Proyecto para detectar llamadas y patrones de fraude bancario, con foco en prote
 - **Clasificación de llamadas**: rutas para clasificar y analizar llamadas.
 - **Chat / Streaming**: soporte para chat y streaming de mensajes (integraciones con modelos o servicios de IA).
 - **Autenticación y roles**: manejo de usuarios, roles y sesiones.
-- **Persistencia**: modelos y migraciones con Sequelize.
+ 
 
 **Estructura del repositorio**
-- **`backend/`**: servidor Node.js (Express), rutas, servicios y modelos Sequelize.
-- **`backend/db/`**: configuración de la base de datos, migraciones y modelos.
+- **`backend/`**: servidor Node.js (Express), rutas.
 - **`backend/routes/`**: rutas principales: `GET /` y bajo `/api/v1`:
-	- `/api/v1/example`
+	- `/api/v1/example`(endpoint de prueba, verificar funcionamiento del backend)
 	- `/api/v1/clasificar` (clasificación)
 	- `/api/v1/chat` (chat)
 	- `/api/v1/detection` (detección)
@@ -24,13 +23,12 @@ Proyecto para detectar llamadas y patrones de fraude bancario, con foco en prote
 - **`estafas-bancarias/`**: proyecto iOS (Swift/SwiftUI) para la interfaz móvil.
 
 **Tecnologías**
-- **Backend**: Node.js, Express, Sequelize, Passport (autenticación), `mysql2` (cliente DB), `dotenv`.
+- **Backend**: Node.js, Express..
 - **Frontend móvil**: Swift, SwiftUI, proyecto Xcode en `estafas-bancarias/`.
 
 **Requisitos**
 - Node.js (versión LTS recomendada, p.ej. 16/18/20)
 - npm
-- MySQL (o servidor compatible, según configuración en `backend/db/config.js`)
 - Xcode (para compilar la app iOS)
 
 **Instalación y ejecución (Backend)**
@@ -43,26 +41,15 @@ Proyecto para detectar llamadas y patrones de fraude bancario, con foco en prote
 	`npm install`
 
 - Configurar variables y base de datos:
-	- Edita `backend/config/config.js` y `backend/db/config.js` según tus credenciales.
+ - Configurar variables de entorno (no es necesario configurar una base de datos para ejecutar el servidor):
 	- Crea un archivo `.env` en `backend/` con variables comunes, p. ej.:
 
 	```text
 	NODE_ENV=development
-	PORT=8080
-	DB_HOST=localhost
-	DB_USER=root
-	DB_PASSWORD=tu_password
-	DB_NAME=polihacks_db
-	JWT_SECRET=tu_secreto
+	PORT=3000
+	JWTSECRET=tu_secreto_opcional
+	GEMINI_API_KEY=tu_api_key_opcional
 	```
-
-- Ejecutar migraciones (si usas Sequelize CLI):
-
-	`npx sequelize-cli db:migrate`
-
-	Si no tienes `sequelize-cli`, instálalo como dependencia de desarrollo:
-
-	`npm install --save-dev sequelize-cli`
 
 - Iniciar servidor (desarrollo):
 
@@ -73,7 +60,7 @@ Proyecto para detectar llamadas y patrones de fraude bancario, con foco en prote
 	`node index.js`
 
 **Rutas principales**
-- Base API: `http://localhost:8080/api/v1`
+- Base API: `http://localhost:3000/api/v1` (el servidor usa por defecto el puerto `3000`, o el valor definido en la variable `PORT`)
 - Rutas disponibles (revisar `backend/routes/` para detalles y payloads):
 	- `/example` — ejemplos y pruebas.
 	- `/clasificar` — endpoints para clasificación de llamadas/contendio.
