@@ -8,11 +8,11 @@ const service = new Chat();
 
 router.post('/', async (req, res, next) => {
     try {
-        const { message } = req.body || {};
+        const { message, type, reset } = req.body || {};
         if (!message) {
             throw boom.badRequest('El campo "message" es requerido');
         }
-        const respuesta = await service.chat(message);
+        const respuesta = await service.chat(message, type, reset);
         res.status(201).json(respuesta);
     } catch (error) {
         next(error);
