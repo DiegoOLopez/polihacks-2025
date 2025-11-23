@@ -42,7 +42,7 @@ class CallManager: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     private var timerSilencio: Timer?
     
     // ⚠️ URL DE TU BACKEND
-    private let apiUrl = "https://polihacks-2025-production.up.railway.app/api/v1/chat"
+    private let apiUrl = "https://polihacks-2025-production.up.railway.app/api/v1/chat-stream"
     
     enum EstadoLlamada { case conectando, enLlamada, finalizada }
     
@@ -165,54 +165,127 @@ class CallManager: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
             "reset": self.esPrimerMensaje
         ]
         
-        // Apagamos bandera después de usarla
         self.esPrimerMensaje = false
-        
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        print("Enviando: \(mensaje) | Type: \(escenarioSend) | Reset: \(body["reset"] ?? false)")
         
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            guard let self = self else { return }
-            DispatchQueue.main.async { self.esperandoRespuesta = false }
-            
-            if let data = data {
-                struct ChatResponse: Codable {
-                    let reply: String
-                    let ataque: Bool?
-                    let nivel: String?
+        print("🚀 Enviando petición: \(mensaje)")
+        
+        Task {
+            do {
+                let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                print(bytes.lines)
+                
+                
+                guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                    print("❌ Error en servidor")
+                    DispatchQueue.main.async {
+                        self.esperandoRespuesta = false
+                        self.iniciarReconocimientoVoz()
+                    }
+                    return
                 }
                 
-                if let decoded = try? JSONDecoder().decode(ChatResponse.self, from: data) {
-                    DispatchQueue.main.async {
+                var bufferFrase = ""
+                var bufferMetadata = ""
+                var leyendoMetadata = false
+                
+                print("📡 Conexión establecida. Esperando stream...")
+
+                // 3. LEER LÍNEA POR LÍNEA CONFORME LLEGAN
+                for try await line in bytes.lines {
+                    
+                    // --- 🔹 DEBUG: ESTO IMPRIMIRÁ CADA LÍNEA QUE LLEGA EN VIVO ---
+                    print("🔹 RECIBIDO: \(line)")
+                    // -------------------------------------------------------------
+                    
+                    // A. DETECTAMOS EL SEPARADOR
+                    if line.contains("###METADATA###") {
+                        print("⚠️ SEPARADOR DETECTADO") // Debug
+                        let partes = line.components(separatedBy: "###METADATA###")
                         
-                        // Lógica de Seguridad (Rojo vs Naranja)
-                        if decoded.ataque == true {
-                            if decoded.nivel == "rojo" {
-                                print("🚨 AMENAZA ROJA: Colgando.")
-                                UINotificationFeedbackGenerator().notificationOccurred(.error)
-                                self.finalizarLlamada()
-                                return
-                            } else if decoded.nivel == "naranja" {
-                                print("⚠️ AMENAZA NARANJA: Alerta.")
-                                self.mostrarAlertaFraude = true
-                                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                        if let textoFinal = partes.first {
+                            bufferFrase += textoFinal
+                            if !bufferFrase.isEmpty {
+                                await MainActor.run { self.leerRespuestaBot(texto: bufferFrase) }
                             }
+                            bufferFrase = ""
                         }
                         
-                        // Bot habla normal (incluso si es naranja)
-                        print("🤖 BOT: \(decoded.reply)")
-                        self.leerRespuestaBot(texto: decoded.reply)
+                        leyendoMetadata = true
+                        if partes.count > 1 {
+                            bufferMetadata += partes[1]
+                        }
+                        continue
                     }
-                } else {
-                    print("❌ JSON Error")
-                    DispatchQueue.main.async { self.iniciarReconocimientoVoz() }
+                    
+                    // B. SI YA ESTAMOS EN ZONA METADATA
+                    if leyendoMetadata {
+                        bufferMetadata += line
+                    }
+                    // C. SI SEGUIMOS EN ZONA DE TEXTO (CHAT)
+                    else {
+                        bufferFrase += line
+                        
+                        if bufferFrase.contains(".") || bufferFrase.contains("?") || bufferFrase.contains("!") {
+                            let fraseAEnviar = bufferFrase
+                            bufferFrase = ""
+                            
+                            // Debug para ver qué mandamos a hablar exactamente
+                            print("🗣️ HABLANDO: \(fraseAEnviar)")
+                            
+                            await MainActor.run {
+                                self.leerRespuestaBot(texto: fraseAEnviar)
+                            }
+                        }
+                    }
                 }
-            } else {
-                print("❌ Red Error")
-                DispatchQueue.main.async { self.iniciarReconocimientoVoz() }
+                
+                print("✅ Stream finalizado.")
+                print("📄 Metadata Completa: \(bufferMetadata)")
+                
+                await MainActor.run {
+                    self.procesarSeguridad(jsonString: bufferMetadata)
+                    self.esperandoRespuesta = false
+                }
+                
+            } catch {
+                print("❌ Error Streaming: \(error)")
+                DispatchQueue.main.async {
+                    self.esperandoRespuesta = false
+                    self.iniciarReconocimientoVoz()
+                }
             }
-        }.resume()
+        }
     }
+    
+    // --- FUNCIÓN QUE FALTABA ---
+        private func procesarSeguridad(jsonString: String) {
+            guard let data = jsonString.data(using: .utf8) else { return }
+            
+            struct ChatResponse: Codable {
+                let nivel: String?
+                let ataque: Bool?
+            }
+            
+            if let decoded = try? JSONDecoder().decode(ChatResponse.self, from: data) {
+                // Verificamos si hay ataque
+                if decoded.ataque == true {
+                    
+                    // CASO ROJO: Colgar inmediatamente
+                    if decoded.nivel == "rojo" {
+                        print("🔴 AMENAZA ROJA DETECTADA - COLGANDO")
+                        UINotificationFeedbackGenerator().notificationOccurred(.error)
+                        self.finalizarLlamada()
+                    }
+                    // CASO AMARILLO/NARANJA: Mostrar Alerta
+                    else if decoded.nivel == "amarillo" || decoded.nivel == "naranja" {
+                        print("🟠 AMENAZA DETECTADA - ALERTA VISUAL")
+                        self.mostrarAlertaFraude = true
+                        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                    }
+                }
+            }
+        }
     
     // --- VOZ BOT ---
     private func leerRespuestaBot(texto: String) {
@@ -384,10 +457,22 @@ struct PantallaLlamadaView: View {
         }
         .onAppear { manager.iniciarLlamada(escenarioKey: escenario.key) }
         .onDisappear { manager.finalizarLlamada() }
+        // 👇 1. ESCUCHAMOS EL ESTADO PARA CERRAR AUTOMÁTICAMENTE
+        .onChange(of: manager.estadoLlamada) { nuevoEstado in
+                    if nuevoEstado == .finalizada {
+                        print("Cerrando pantalla automáticamente...")
+                        dismiss()
+                    }
+                }
+                
+                // 👇 2. ALERTA NARANJA
         .alert("⚠️ POSIBLE FRAUDE DETECTADO", isPresented: $manager.mostrarAlertaFraude) {
-            Button("Colgar Ahora", role: .destructive) { manager.finalizarLlamada(); dismiss() }
-            Button("Continuar bajo mi riesgo", role: .cancel) { }
-        } message: { Text("Nuestro sistema detectó que están intentando obtener información sensible (Nivel Naranja).") }
+                    Button("Colgar Ahora", role: .destructive) {
+                        manager.finalizarLlamada()
+                        // No necesitamos llamar dismiss() aquí porque el .onChange de arriba lo hará
+                    }
+                    Button("Continuar bajo mi riesgo", role: .cancel) { }
+                } message: { Text("Nuestro sistema detectó que están intentando obtener información sensible (Nivel Naranja).") }
     }
 }
 
