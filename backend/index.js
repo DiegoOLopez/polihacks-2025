@@ -60,6 +60,6 @@ app.use(boomErrorHandler);
 app.use(errorHandler);
 
 // APP LISTEN
-app.listen(port, () => {
-  console.log('Mi port' +  port);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Servidor corriendo en http://0.0.0.0:${port}/`);
 });
