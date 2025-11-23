@@ -1,6 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { config } = require('../config/config'); // Asumiendo que esta ruta es correcta
 
-const GEMINI_API_KEY = "AIzaSyCC8AmDpRGEGHDqaq9wBw7TPJsrZBStqcU";
+const GEMINI_API_KEY = config.geminiApiKey;
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 const systemPrompt = `

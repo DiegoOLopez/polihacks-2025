@@ -29,45 +29,47 @@ router.post('/', async (req, res, next) => {
             throw boom.badRequest('El campo "message" es requerido');
         }
 
-        // Primer filtro: Algoritmo 
-        const filtroAlgoritmo = await algoritmoService.checkCallForScam(message);
-        // filtroAlgoritmo = { isScam: true|false, keywords: [...], timestamp }
-
-        if (!filtroAlgoritmo.isScam) {
-            // Si no es scam, respondemos directamente
-            const respuesta = {
-                respuesta: "Mensaje seguro, no se detectó intento de estafa.",
-                ataque: false,
-                keywords: filtroAlgoritmo.keywords
-            };
-
-            const mensajeModelo = {
-                role: 'model',
-                "parts": [{ "text": message }]
-            };
-            message_list.push(mensajeModelo);
-
-            return res.status(201).json(respuesta);
-        }
-
-        // Segundo filtro: Gemini
-        const filtroGemini = await esFraude(message);
-        // filtroGemini = { ataque: true|false, nivel: 'verde'|'amarillo'|'rojo' }
-
-        // Llamamos al chat solo si Gemini detecta ataque
+        // Primero el estafador responde
         const respuestaChat = await service.chat(message, type, reset, message_list);
-
+        
         const mensajeModelo = {
             "role": 'model',
-            "parts": [{ "text": respuesta.reply }]
+            "parts": [{ "text": respuestaChat.reply }]
         }
+
         message_list.push(mensajeModelo)
+
+        function historyToPlainText(history) {
+        return history.map(item => {
+        const text = item.parts?.[0]?.text ?? "";
+        return `${item.role.toUpperCase()}: ${text}`;
+        }).join("\n");
+        }
+
+        const plano = historyToPlainText(message_list);
+
+        // Primer filtro: Algoritmo 
+        const filtroAlgoritmo = await algoritmoService.checkCallForScam(plano);
+        console.log(filtroAlgoritmo)
+        // filtroAlgoritmo = { isScam: true|false, keywords: [...], timestamp }
+        let nivel = "verde"
+        let ataque = false
+        if (filtroAlgoritmo.isScam) {
+            // Si no es scam, respondemos directamente
+            const filtroGemini = await esFraude(plano);
+            nivel = filtroGemini.nivel
+            ataque = filtroGemini.ataque
+        }
+
+
+        // Llamamos al chat solo si Gemini detecta ataque
+
+
 
         res.status(201).json({
             respuesta: respuestaChat,
-            nivel: filtroGemini.nivel,
-            ataque: filtroGemini.ataque,
-            keywords: filtroAlgoritmo.keywords
+            nivel: nivel,
+            ataque: ataque,
         });
 
     } catch (error) {
