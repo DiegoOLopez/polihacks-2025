@@ -48,7 +48,7 @@ Vamos a realizar la simulación de una conversación en tiempo real. Actuarás c
 
 
 class Chat {
-    async chat(message) {
+    async chat(message, type, reset, message_list) {
         if (!message) {
             throw boom.badRequest('El parámetro "message" es requerido');
         }
