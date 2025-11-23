@@ -7,16 +7,21 @@ const router = express.Router();
 const service = new Chat();
 
 
-const message_list = new Set();
+let message_list = [];
 
 router.post('/', async (req, res, next) => {
     try {
         const { message, type, reset } = req.body || {};
+        if (reset == true){
+            message_list = []
+        }
+        console.log(message_list)
+
         const mensajeUsuario = { 
-            author: 'user', // Valor por defecto si no envían type
-            message: message 
+            "role": 'user', // Valor por defecto si no envían type
+            "parts": [{ "text": message }]
         };
-        message_list.add(mensajeUsuario);
+        message_list.push(mensajeUsuario);
 
         if (!message) {
             throw boom.badRequest('El campo "message" es requerido');
@@ -24,11 +29,10 @@ router.post('/', async (req, res, next) => {
         const respuesta = await service.chat(message, type, reset, message_list);
 
         const mensajeModelo = {
-            author: 'model',
-            message: respuesta
+            "role": 'model',
+            "parts": [{ "text": respuesta.reply }]
         }
-        message_list.add(mensajeModelo)
-        console.log(message_list)
+        message_list.push(mensajeModelo)
         res.status(201).json(respuesta);
     } catch (error) {
         next(error);

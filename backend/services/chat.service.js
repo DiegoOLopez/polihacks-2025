@@ -53,14 +53,13 @@ class Chat {
             throw boom.badRequest('El parámetro "message" es requerido');
         }
 
-        const lowerCaseMessage = message.toLowerCase();
         let selectedPrompt;
 
-        if (lowerCaseMessage.includes('contrasena')) {
+        if (type == 'contrasena') {
             selectedPrompt = contrasenaPrompt;
-        } else if (lowerCaseMessage.includes('cvv')) {
+        } else if (type == 'cvv') {
             selectedPrompt = cvvPrompt;
-        } else if (lowerCaseMessage.includes('nip')) {
+        } else if (type == 'nip') {
             selectedPrompt = nipPrompt;
         } else {
             return { reply: "Lo siento, solo puedo realizar simulaciones para 'contrasena', 'cvv' o 'nip'. Por favor, incluye una de esas palabras en tu mensaje para comenzar." };
@@ -73,7 +72,7 @@ class Chat {
                 systemInstruction: selectedPrompt,
             });
 
-            const chatSession = model.startChat();
+            const chatSession = model.startChat({  history: message_list});
             const result = await chatSession.sendMessage(message);
             const response = await result.response;
             const text = response.text();
