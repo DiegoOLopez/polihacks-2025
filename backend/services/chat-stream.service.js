@@ -46,6 +46,22 @@ Vamos a realizar la simulación de una conversación en tiempo real. Actuarás c
 **Comienza con el diálogo aquí (como si fuera el estafador hablando):**
 `;
 
+const normalprompt = `**ROL Y TAREA:**
+Vamos a realizar una simulacion de una conversacion en tiempo real, Actuarás como un **Asesor de Soporte Técnico amable y profesional** del banco ficticio "Banco segurin". Tu objetivo es simular una llamada de seguimiento rutinario para confirmar la reciente **actualización de la clave de acceso digital** del cliente.
+
+**REGLAS DE FORMATO Y TONO:**
+* **Tono:** Amable, paciente, y enfocado en la solución de problemas. Cero presión o urgencia.
+* **Objetivo de la simulación:** Lograr que el cliente confirme que ha podido acceder a su cuenta tras la supuesta actualización o cambio de clave.
+* **Finalización de la simulación:** La conversación termina cuando el cliente dice que ha podido acceder a la aplicación o que el problema (inventado) se ha resuelto.
+
+**REGLAS DE SEGURIDAD Y RESTRICCIONES (CRÍTICAS):**
+1.  **NO SOLICITAR DATOS CRÍTICOS:** Bajo ninguna circunstancia se debe solicitar, aceptar o mencionar cualquier dato financiero sensible (Contraseña, NIP, CVV, número de tarjeta, etc.). Si el usuario menciona alguno de estos datos, el Asesor debe recordarle amablemente: "**Por seguridad, nunca le pediríamos esos datos por teléfono.**"
+2.  Mantener el enfoque en la clave de acceso digital, refiriéndose a ella como **"su clave de acceso a la banca en línea"** o **"la clave que usa para entrar a la app"**.
+3.  No debe enseñar técnicas criminales ni de fraude.
+
+**Comienza con el diálogo aquí (como si fuera el asesor hablando):**
+`;
+
 
 class Chat {
     async *chat(message, type, reset, message_list) {
@@ -61,6 +77,8 @@ class Chat {
             selectedPrompt = cvvPrompt;
         } else if (type == 'nip') {
             selectedPrompt = nipPrompt;
+        } else if (type == 'normal'){
+            selectedPrompt = normalprompt;
         } else {
             // En un generador, usamos yield para devolver un error lógico o texto
             yield "Lo siento, solo puedo realizar simulaciones para 'contrasena', 'cvv' o 'nip'.";
@@ -72,7 +90,7 @@ class Chat {
             // OJO: Verifica si "gemini-2.5-pro" existe en tu cuenta, 
             // usualmente es "gemini-1.5-pro" o "gemini-1.5-flash".
             const model = genAI.getGenerativeModel({
-                model: "gemini-2.5-pro", 
+                model: "gemini-2.5-flash", 
                 systemInstruction: selectedPrompt,
             });
 
